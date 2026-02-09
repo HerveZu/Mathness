@@ -1,0 +1,25 @@
+{
+  "projectName": "mathness",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "pnpm",
+  "tailwind": true,
+  "addOnOptions": {
+    "drizzle": {
+      "database": "postgresql"
+    }
+  },
+  "git": true,
+  "version": 1,
+  "framework": "react-cra",
+  "chosenAddOns": [
+    "biome",
+    "netlify",
+    "start",
+    "neon",
+    "shadcn",
+    "drizzle",
+    "tanstack-query",
+    "t3env"
+  ]
+}
