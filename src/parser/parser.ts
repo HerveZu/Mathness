@@ -24,7 +24,9 @@ export type ParserResult =
     };
 
 export function mathnessParse(lexerResult: LexerResult): ParserResult {
-  if (!lexerResult.complete) throw new Error('Lexer result is not complete');
+  if (!lexerResult.complete) {
+    return { valid: false, error: 'Lexer result is not complete' };
+  }
 
   const state: ParserState = { tokens: lexerResult.tokens, index: 0 };
 

@@ -7,10 +7,10 @@ export function MathInput({
   length,
   lexerResult,
   onLexerResult,
-  isValid,
+  error,
 }: {
   length: number;
-  isValid: boolean;
+  error: boolean;
   lexerResult: LexerResult | undefined;
   onLexerResult: (result: LexerResult) => void;
 }) {
@@ -87,7 +87,7 @@ export function MathInput({
             className={cn(
               'h-24 w-18 border-2 rounded-xl hover:ring-2 hover:ring-accent',
               'flex items-center justify-center',
-              !isValid && lexerResult?.tokens.length && 'border-red-500',
+              error && lexerResult?.tokens.length && 'border-red-500',
             )}
           >
             <p className={'font-semibold text-3xl'}>{token?.text ?? ''}</p>
