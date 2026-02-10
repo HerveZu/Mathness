@@ -3,13 +3,22 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils.ts';
 import { lexer } from '@/parser/lexer.ts';
 
-export function MathInput({ length }: { length: number }) {
-  const [lexerResult, setLexerResult] = useState<LexerResult>();
+export function MathInput({
+  length,
+  lexerResult,
+  onLexerResult,
+  isValid,
+}: {
+  length: number;
+  isValid: boolean;
+  lexerResult: LexerResult | undefined;
+  onLexerResult: (result: LexerResult) => void;
+}) {
   const [expression, setExpression] = useState('');
 
   function handleExpressionChange(value: string) {
     const lexerResult = lexer(value);
-    setLexerResult(lexerResult);
+    onLexerResult(lexerResult);
 
     if (lexerResult.complete) {
       setExpression(value);
@@ -33,7 +42,7 @@ export function MathInput({ length }: { length: number }) {
       if (partialLexerResult.tokens.length > 0) {
         const validExpression = validFirstPart + workingExpression;
         const composedResult = lexer(validExpression);
-        setLexerResult(composedResult);
+        onLexerResult(composedResult);
         setExpression(validExpression);
         return;
       }
@@ -46,7 +55,7 @@ export function MathInput({ length }: { length: number }) {
   function handleBackspace() {
     if (!lexerResult) return;
     const tokens = [...lexerResult.tokens.slice(0, -1)];
-    setLexerResult({
+    onLexerResult({
       ...lexerResult,
       tokens,
     });
@@ -78,6 +87,7 @@ export function MathInput({ length }: { length: number }) {
             className={cn(
               'h-24 w-18 border-2 rounded-xl hover:ring-2 hover:ring-accent',
               'flex items-center justify-center',
+              !isValid && lexerResult?.tokens.length && 'border-red-500',
             )}
           >
             <p className={'font-semibold text-3xl'}>{token?.text ?? ''}</p>
