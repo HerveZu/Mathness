@@ -1,0 +1,89 @@
+import type { LexerResult } from 'leac';
+import { useState } from 'react';
+import { cn } from '@/lib/utils.ts';
+import { lexer } from '@/parser/lexer.ts';
+
+export function MathInput({ length }: { length: number }) {
+  const [lexerResult, setLexerResult] = useState<LexerResult>();
+  const [expression, setExpression] = useState('');
+
+  function handleExpressionChange(value: string) {
+    const lexerResult = lexer(value);
+    setLexerResult(lexerResult);
+
+    if (lexerResult.complete) {
+      setExpression(value);
+      return;
+    }
+
+    let workingExpression = value;
+    const validFirstPart = lexerResult.tokens
+      .map((token) => token.text)
+      .join('');
+
+    if (
+      validFirstPart.length > 0 &&
+      workingExpression.startsWith(validFirstPart)
+    )
+      workingExpression = workingExpression.slice(validFirstPart.length);
+
+    while (workingExpression.length > 0) {
+      const partialLexerResult = lexer(workingExpression);
+
+      if (partialLexerResult.tokens.length > 0) {
+        const validExpression = validFirstPart + workingExpression;
+        const composedResult = lexer(validExpression);
+        setLexerResult(composedResult);
+        setExpression(validExpression);
+        return;
+      }
+      workingExpression = workingExpression.slice(1);
+    }
+
+    setExpression(value);
+  }
+
+  function handleBackspace() {
+    if (!lexerResult) return;
+    const tokens = [...lexerResult.tokens.slice(0, -1)];
+    setLexerResult({
+      ...lexerResult,
+      tokens,
+    });
+    setExpression(tokens.map((token) => token.text).join(''));
+  }
+
+  return (
+    <span className={'relative flex gap-3'}>
+      <input
+        className={'opacity-0 absolute left-0 top-0 right-0 bottom-0 z-10'}
+        value={expression}
+        onChange={(e) => {
+          handleExpressionChange(e.target.value);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Backspace') {
+            e.preventDefault();
+            handleBackspace();
+          }
+        }}
+      />
+      {Array.from({ length: length }).map((_, i) => {
+        const token = lexerResult?.tokens[i];
+
+        return (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: The position is stable
+            key={i}
+            className={cn(
+              'h-24 w-18 border-2 rounded-xl hover:ring-2 hover:ring-accent',
+              'flex items-center justify-center',
+            )}
+          >
+            <p className={'font-semibold text-3xl'}>{token?.text ?? ''}</p>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
