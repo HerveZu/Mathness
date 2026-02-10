@@ -5,6 +5,7 @@ import {
   ConstNode,
   FunctionNode,
   NumberNode,
+  type TokenWithPosition,
   VariableNode,
 } from '@/parser/ast.ts';
 
@@ -40,8 +41,9 @@ export function mathnessParse(lexerResult: LexerResult): ParserResult {
         `Expected ${name} but found ${token.name} at ${token.column}`,
       );
     }
+    const tokenPosition = state.index;
     state.index++;
-    return token;
+    return { ...token, position: tokenPosition } as TokenWithPosition;
   };
 
   const parsePrimary = (): ASTNode => {
@@ -49,17 +51,16 @@ export function mathnessParse(lexerResult: LexerResult): ParserResult {
     if (!token) throw new Error('Unexpected end of input');
 
     if (token.name === 'number') {
-      return new NumberNode(parseFloat(consume().text));
+      return new NumberNode(consume());
     }
     if (token.name === 'variable') {
-      consume();
-      return new VariableNode();
+      return new VariableNode(consume());
     }
     if (token.name === 'const') {
-      return new ConstNode(consume().text);
+      return new ConstNode(consume());
     }
     if (token.name === 'function') {
-      const name = consume().text;
+      const name = consume();
       consume('lparen');
       const argument = parseExpression();
       consume('rparen');
@@ -77,7 +78,7 @@ export function mathnessParse(lexerResult: LexerResult): ParserResult {
   const parseExponent = (): ASTNode => {
     let node = parsePrimary();
     if (peek()?.name === 'caret') {
-      const operator = consume().text;
+      const operator = consume();
       // Recurse on the right side for right-associativity (e.g. 2^3^4)
       node = new BinaryNode(operator, node, parseExponent());
     }
@@ -87,7 +88,7 @@ export function mathnessParse(lexerResult: LexerResult): ParserResult {
   const parseMultiplication = (): ASTNode => {
     let node = parseExponent();
     while (peek()?.name === 'times' || peek()?.name === 'div') {
-      const operator = consume().text;
+      const operator = consume();
       node = new BinaryNode(operator, node, parseExponent());
     }
     return node;
@@ -96,7 +97,7 @@ export function mathnessParse(lexerResult: LexerResult): ParserResult {
   const parseAdditive = (): ASTNode => {
     let node = parseMultiplication();
     while (peek()?.name === 'plus' || peek()?.name === 'minus') {
-      const operator = consume().text;
+      const operator = consume();
       node = new BinaryNode(operator, node, parseMultiplication());
     }
     return node;

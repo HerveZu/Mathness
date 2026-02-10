@@ -1,19 +1,27 @@
 import type { LexerResult } from 'leac';
 import { useState } from 'react';
 import { cn } from '@/lib/utils.ts';
+import type { SimilarCompareResult } from '@/parser/ast.ts';
 import { lexer } from '@/parser/lexer.ts';
+
+export type PartialHint = SimilarCompareResult & { match: boolean };
+export type Hints = PartialHint[] | 'full-match';
+
+type MathInputProps = {
+  length: number;
+  error: boolean;
+  hints: Hints | null;
+  lexerResult: LexerResult | undefined;
+  onLexerResult: (result: LexerResult) => void;
+};
 
 export function MathInput({
   length,
   lexerResult,
   onLexerResult,
   error,
-}: {
-  length: number;
-  error: boolean;
-  lexerResult: LexerResult | undefined;
-  onLexerResult: (result: LexerResult) => void;
-}) {
+  hints,
+}: MathInputProps) {
   const [expression, setExpression] = useState('');
 
   function handleExpressionChange(value: string) {
@@ -79,6 +87,11 @@ export function MathInput({
       />
       {Array.from({ length: length }).map((_, i) => {
         const token = lexerResult?.tokens[i];
+        const relevantHints =
+          hints !== 'full-match'
+            ? hints?.filter((hint) => i >= hint.start && i < hint.end)
+            : [];
+        const fullMatch = hints === 'full-match';
 
         return (
           <span
@@ -88,6 +101,9 @@ export function MathInput({
               'h-24 w-18 border-2 rounded-xl hover:ring-2 hover:ring-accent',
               'flex items-center justify-center',
               error && lexerResult?.tokens.length && 'border-red-500',
+              relevantHints?.length && 'border-yellow-500',
+              relevantHints?.some((hint) => hint.match) && 'border-green-500',
+              fullMatch && 'border-green-500 bg-green-500/20',
             )}
           >
             <p className={'font-semibold text-3xl'}>{token?.text ?? ''}</p>
