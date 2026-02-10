@@ -18,11 +18,13 @@ export const Route = createFileRoute('/')({
   component: RouteComponent,
 });
 
-const targetResult = mathnessParse(lexer('log(x) - x'));
-// biome-ignore lint/style/noNonNullAssertion: Manual tests
-const targetAst = targetResult.valid ? targetResult.ast : null!;
+const targetLexerResult = lexer('cos(sin(x)) + 1');
+const targetResult = mathnessParse(targetLexerResult);
+if (!targetResult.valid) throw new Error('Invalid target expression');
 
-const TARGET_LENGTH = 8;
+const targetAst = targetResult.ast;
+
+const inputLength = targetLexerResult.tokens.length;
 const samples = samplePoints(-50, 50, 1_000);
 
 function RouteComponent() {
@@ -30,7 +32,7 @@ function RouteComponent() {
 
   const guessAst = useMemo(() => {
     const guessResult =
-      lexerResult?.tokens.length === TARGET_LENGTH && lexerResult?.complete
+      lexerResult?.tokens.length === inputLength && lexerResult?.complete
         ? mathnessParse(lexerResult)
         : null;
 
@@ -107,10 +109,10 @@ function RouteComponent() {
         </div>
 
         <MathInput
-          length={TARGET_LENGTH}
+          length={inputLength}
           error={
             !!lexerResult &&
-            lexerResult.tokens.length === TARGET_LENGTH &&
+            lexerResult.tokens.length === inputLength &&
             !mathnessParse(lexerResult).valid
           }
           hints={hints}
