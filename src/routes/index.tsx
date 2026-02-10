@@ -17,7 +17,6 @@ export const Route = createFileRoute('/')({
   component: RouteComponent,
 });
 
-// Pre-parse the target outside the component so it's only done once
 const targetResult = mathnessParse(lexer('x^2+4'));
 const TARGET_LENGTH = 5;
 
@@ -32,10 +31,9 @@ function RouteComponent() {
         ? mathnessParse(lexerResult)
         : null;
 
-    // Ensure evaluate is called correctly (bound to its AST node)
     return generateSamples(
-      (x) => (guessFn?.valid ? guessFn.ast.evaluate(x) : NaN),
       (x) => targetResult.ast.evaluate(x),
+      guessFn?.valid ? (x) => guessFn.ast.evaluate(x) : undefined,
     );
   }, [lexerResult]);
 
@@ -50,7 +48,7 @@ function RouteComponent() {
               <Tooltip />
               <Line
                 type="monotone"
-                dataKey="f"
+                dataKey="guess"
                 stroke="#8884d8"
                 dot={false}
                 strokeWidth={5}
@@ -58,7 +56,7 @@ function RouteComponent() {
               />
               <Line
                 type="monotone"
-                dataKey="g"
+                dataKey="target"
                 stroke="#82ca9d"
                 dot={false}
                 strokeWidth={5}
@@ -84,8 +82,8 @@ function RouteComponent() {
 }
 
 const generateSamples = (
-  fn1: (x: number) => number,
-  fn2?: (x: number) => number,
+  targetFn: (x: number) => number,
+  guessFn?: (x: number) => number,
   min = -50,
   max = 50,
   step = 1,
@@ -95,8 +93,8 @@ const generateSamples = (
     const xVal = parseFloat(x.toFixed(2));
     samples.push({
       x: xVal,
-      f: fn1(xVal),
-      g: fn2?.(xVal),
+      target: targetFn(xVal),
+      guess: guessFn?.(xVal),
     });
   }
   return samples;
