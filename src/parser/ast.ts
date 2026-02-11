@@ -2,19 +2,13 @@ import type { Token } from 'leac';
 
 export interface ASTNode {
   evaluate: (x: number) => number;
-  compare: (other: ASTNode) => CompareResult;
+  compare: (other: ASTNode) => boolean;
   subExpressions: ASTNode[];
+  boundaries: {similar: {start: number; end: number}, match: {start: number; end: number}}
 }
-
-export type SimilarCompareResult = {
-  similar: true;
-  start: number;
-  end: number;
-};
 
 export type TokenWithPosition = Token & { position: number };
 
-export type CompareResult = { similar: false } | SimilarCompareResult;
 
 export class BinaryNode implements ASTNode {
   constructor(
@@ -47,19 +41,16 @@ export class BinaryNode implements ASTNode {
     }
   }
 
-  compare(other: ASTNode): CompareResult {
-    if (
-      other instanceof BinaryNode &&
-      this.operator.text === other.operator.text
-    ) {
-      return {
-        similar: true,
-        start: this.operator.position,
-        end: this.operator.position + 1,
-      };
+  get boundaries() {
+    return {
+      similar: {start: this.operator.position, end: this.operator.position + 1},
+      match: {start: this.left.boundaries.match.start, end: this.right.boundaries.match.end}
     }
+  }
 
-    return { similar: false };
+  compare(other: ASTNode): boolean {
+    return other instanceof BinaryNode &&
+        this.operator.text === other.operator.text
   }
 }
 
@@ -83,21 +74,25 @@ export class FunctionNode implements ASTNode {
         return Math.tan(this.argument.evaluate(x));
       case 'log':
         return Math.log(this.argument.evaluate(x));
+      case 'sqrt':
+        return Math.sqrt(this.argument.evaluate(x));
+      case 'abs':
+        return Math.abs(this.argument.evaluate(x));
       default:
         throw new Error(`Function ${this.name.text} is not supported`);
     }
   }
 
-  compare(other: ASTNode): CompareResult {
-    if (other instanceof FunctionNode && this.name.text === other.name.text) {
-      return {
-        similar: true,
-        start: this.name.position,
-        end: this.name.position + 1,
-      };
+  get boundaries() {
+    return {
+      similar: {start: this.name.position, end: this.name.position + 1},
+      // account for the closing paren
+      match: {start: this.name.position, end: this.argument.boundaries.match.end + 1}
     }
+  }
 
-    return { similar: false };
+  compare(other: ASTNode): boolean {
+    return other instanceof FunctionNode && this.name.text === other.name.text
   }
 }
 
@@ -111,15 +106,15 @@ export class VariableNode implements ASTNode {
     return [];
   }
 
-  compare(other: ASTNode): CompareResult {
-    if (other instanceof VariableNode) {
-      return {
-        similar: true,
-        start: this.variable.position,
-        end: this.variable.position + 1,
-      };
+  get boundaries() {
+    return {
+      similar: {start: this.variable.position, end: this.variable.position + 1},
+      match: {start: this.variable.position, end: this.variable.position + 1}
     }
-    return { similar: false };
+  }
+
+  compare(other: ASTNode): boolean {
+    return  other instanceof VariableNode
   }
 }
 
@@ -134,16 +129,15 @@ export class NumberNode implements ASTNode {
     return parseFloat(this.value.text);
   }
 
-  compare(other: ASTNode): CompareResult {
-    if (other instanceof NumberNode && this.value.text === other.value.text) {
-      return {
-        similar: true,
-        start: this.value.position,
-        end: this.value.position + 1,
-      };
+  get boundaries() {
+    return {
+      similar: {start: this.value.position, end: this.value.position + 1},
+      match: {start: this.value.position, end: this.value.position + 1}
     }
+  }
 
-    return { similar: false };
+  compare(other: ASTNode): boolean {
+    return other instanceof NumberNode && this.value.text === other.value.text
   }
 }
 
@@ -165,15 +159,14 @@ export class ConstNode implements ASTNode {
     }
   }
 
-  compare(other: ASTNode): CompareResult {
-    if (other instanceof ConstNode && this.value.text === other.value.text) {
-      return {
-        similar: true,
-        start: this.value.position,
-        end: this.value.position + 1,
-      };
+  get boundaries() {
+    return {
+      similar: {start: this.value.position, end: this.value.position + 1},
+      match: {start: this.value.position, end: this.value.position + 1}
     }
+  }
 
-    return { similar: false };
+  compare(other: ASTNode): boolean {
+    return  other instanceof ConstNode && this.value.text === other.value.text
   }
 }

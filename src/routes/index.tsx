@@ -72,10 +72,10 @@ function RouteComponent() {
           }
           return isMatch(guessSubExpr, targetSubExpr, x);
         });
-        const compareResult = guessSubExpr.compare(targetSubExpr);
-
-        return compareResult.similar
-          ? [{ ...compareResult, match, guessSubExpr, targetSubExpr }]
+        const similar = guessSubExpr.compare(targetSubExpr);
+        const boundary = match ? guessSubExpr.boundaries.match : guessSubExpr.boundaries.similar;
+        return similar
+          ? [{ ...boundary, match, guessSubExpr, targetSubExpr }]
           : [];
       });
     }

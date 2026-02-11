@@ -3,7 +3,7 @@ import { createLexer } from 'leac';
 export const lexer = createLexer([
   { name: 'ws', regex: /\s+/, discard: true },
 
-  { name: 'function', regex: /log|sin|cos|tan|sqrt/ },
+  { name: 'function', regex: /log|sin|cos|tan|sqrt|abs/ },
   { name: 'variable', str: 'x' },
 
   { name: 'number', regex: /0|([1-9][0-9]?)/ }, // 0 or non-zero int (max 2 digits)
