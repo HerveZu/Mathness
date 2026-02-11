@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import type { LexerResult } from 'leac';
+import { functions } from 'src/functions.json';
 import { useMemo, useState } from 'react';
 import {
   Line,
@@ -18,17 +19,31 @@ export const Route = createFileRoute('/')({
   component: RouteComponent,
 });
 
-const targetLexerResult = lexer('cos(sin(x)) + 1');
-const targetResult = mathnessParse(targetLexerResult);
-if (!targetResult.valid) throw new Error('Invalid target expression');
+const allFunctions = functions.map((f) => f.trim());
 
-const targetAst = targetResult.ast;
-
-const inputLength = targetLexerResult.tokens.length;
 const samples = samplePoints(-50, 50, 1_000);
 
 function RouteComponent() {
   const [lexerResult, setLexerResult] = useState<LexerResult>();
+  const targetFn = useMemo(() => {
+    let targetFn: { lexerResult: LexerResult; ast: ASTNode } | null = null;
+    do {
+      const randomFunction =
+        allFunctions[Math.floor(Math.random() * allFunctions.length)];
+      const targetLexerResult = lexer(randomFunction);
+      const targetResult = mathnessParse(targetLexerResult);
+
+      if (targetResult.valid)
+        targetFn = { lexerResult: targetLexerResult, ast: targetResult.ast };
+    } while (!targetFn);
+
+    if (!targetFn) throw new Error(`No valid target expression`);
+
+    return targetFn;
+  }, []);
+
+  const targetAst = targetFn.ast;
+  const inputLength = targetFn.lexerResult.tokens.length;
 
   const guessAst = useMemo(() => {
     const guessResult =
@@ -37,7 +52,7 @@ function RouteComponent() {
         : null;
 
     return guessResult?.valid ? guessResult.ast : null;
-  }, [lexerResult]);
+  }, [lexerResult, inputLength]);
 
   const hints = useMemo(() => {
     if (guessAst && samples.every((x) => isMatch(guessAst, targetAst, x))) {
@@ -66,19 +81,17 @@ function RouteComponent() {
     }
 
     return guessAst ? getAllSubExprs(guessAst).flatMap(exprHints) : null;
-  }, [guessAst]);
+  }, [guessAst, targetAst]);
 
   const data = useMemo(() => {
-    if (!targetResult.valid) return [];
-
     return samples.map((x) => ({
       x,
       guess: guessAst?.evaluate(x),
-      target: targetResult.ast.evaluate(x),
+      target: targetAst.evaluate(x),
     }));
-  }, [guessAst]);
+  }, [guessAst, targetAst.evaluate]);
 
-  hints && console.log('hints', hints);
+  hints && console.log('hints', hints, targetAst);
 
   return (
     <div className="h-screen w-screen flex flex-col justify-center items-center bg-background p-4">
