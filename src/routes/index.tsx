@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
 import type { LexerResult } from 'leac';
-import { functions } from 'src/functions.json';
 import { useMemo, useState } from 'react';
 import {
   Line,
@@ -11,6 +10,7 @@ import {
   YAxis,
 } from 'recharts';
 import { type ASTNode, VariableNode } from '@/parser/ast.ts';
+import { generateFunction } from '@/parser/function-generator.ts';
 import { lexer } from '@/parser/lexer.ts';
 import { mathnessParse } from '@/parser/parser.ts';
 import { MathInput, type PartialHint } from '@/routes/-math-input.tsx';
@@ -19,27 +19,17 @@ export const Route = createFileRoute('/')({
   component: RouteComponent,
 });
 
-const allFunctions = functions.map((f) => f.trim());
-
 const samples = samplePoints(-50, 50, 1_000);
 
 function RouteComponent() {
   const [lexerResult, setLexerResult] = useState<LexerResult>();
   const targetFn = useMemo(() => {
-    let targetFn: { lexerResult: LexerResult; ast: ASTNode } | null = null;
-    do {
-      const randomFunction =
-        allFunctions[Math.floor(Math.random() * allFunctions.length)];
-      const targetLexerResult = lexer(randomFunction);
-      const targetResult = mathnessParse(targetLexerResult);
-
-      if (targetResult.valid)
-        targetFn = { lexerResult: targetLexerResult, ast: targetResult.ast };
-    } while (!targetFn);
-
-    if (!targetFn) throw new Error(`No valid target expression`);
-
-    return targetFn;
+    const randomFn = generateFunction({ minToken: 5, maxToken: 10 });
+    console.log(randomFn);
+    const targetLexerResult = lexer(randomFn);
+    const targetResult = mathnessParse(targetLexerResult);
+    if (!targetResult.valid) throw new Error('Invalid target function');
+    return { lexerResult: targetLexerResult, ast: targetResult.ast };
   }, []);
 
   const targetAst = targetFn.ast;
@@ -73,7 +63,9 @@ function RouteComponent() {
           return isMatch(guessSubExpr, targetSubExpr, x);
         });
         const similar = guessSubExpr.compare(targetSubExpr);
-        const boundary = match ? guessSubExpr.boundaries.match : guessSubExpr.boundaries.similar;
+        const boundary = match
+          ? guessSubExpr.boundaries.match
+          : guessSubExpr.boundaries.similar;
         return similar
           ? [{ ...boundary, match, guessSubExpr, targetSubExpr }]
           : [];
