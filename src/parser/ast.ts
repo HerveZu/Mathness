@@ -4,11 +4,56 @@ export interface ASTNode {
   evaluate: (x: number) => number;
   compare: (other: ASTNode) => boolean;
   subExpressions: ASTNode[];
-  boundaries: {similar: {start: number; end: number}, match: {start: number; end: number}}
+  boundaries: { similar: ASTBoundary; match: ASTBoundary };
 }
+export type ASTBoundary = { start: number; end: number };
 
 export type TokenWithPosition = Token & { position: number };
 
+export class Unary implements ASTNode {
+  constructor(
+    public operator: TokenWithPosition,
+    public right: ASTNode,
+  ) {}
+
+  get subExpressions() {
+    return [this.right];
+  }
+
+  evaluate(x: number) {
+    const right = this.right.evaluate(x);
+
+    switch (this.operator.text) {
+      case '+':
+        return +right;
+      case '-':
+        return -right;
+      default:
+        throw new Error(`Operator ${this.operator} is not supported`);
+    }
+  }
+
+  get boundaries() {
+    return {
+      similar: {
+        start: this.operator.position,
+        end: this.operator.position + 1,
+      },
+      match: {
+        start: this.operator.position,
+        end: this.right.boundaries.match.end,
+      },
+    };
+  }
+
+  compare(other: ASTNode): boolean {
+    return (
+      other instanceof Unary &&
+      this.operator.text === other.operator.text &&
+      this.right.compare(other.right)
+    );
+  }
+}
 
 export class BinaryNode implements ASTNode {
   constructor(
@@ -43,14 +88,21 @@ export class BinaryNode implements ASTNode {
 
   get boundaries() {
     return {
-      similar: {start: this.operator.position, end: this.operator.position + 1},
-      match: {start: this.left.boundaries.match.start, end: this.right.boundaries.match.end}
-    }
+      similar: {
+        start: this.operator.position,
+        end: this.operator.position + 1,
+      },
+      match: {
+        start: this.left.boundaries.match.start,
+        end: this.right.boundaries.match.end,
+      },
+    };
   }
 
   compare(other: ASTNode): boolean {
-    return other instanceof BinaryNode &&
-        this.operator.text === other.operator.text
+    return (
+      other instanceof BinaryNode && this.operator.text === other.operator.text
+    );
   }
 }
 
@@ -64,7 +116,7 @@ export class FunctionNode implements ASTNode {
     return [this.argument];
   }
 
-  evaluate(x: number) {
+  evaluate(x: number): number {
     switch (this.name.text) {
       case 'sin':
         return Math.sin(this.argument.evaluate(x));
@@ -78,21 +130,31 @@ export class FunctionNode implements ASTNode {
         return Math.sqrt(this.argument.evaluate(x));
       case 'abs':
         return Math.abs(this.argument.evaluate(x));
+      case '-':
+        return -this.argument.evaluate(x);
+      case '+':
+        return this.argument.evaluate(x);
       default:
         throw new Error(`Function ${this.name.text} is not supported`);
     }
   }
 
   get boundaries() {
+    const isUnary = this.name.text === '-' || this.name.text === '+';
     return {
-      similar: {start: this.name.position, end: this.name.position + 1},
-      // account for the closing paren
-      match: {start: this.name.position, end: this.argument.boundaries.match.end + 1}
-    }
+      similar: { start: this.name.position, end: this.name.position + 1 },
+      // account for the closing paren if it's a function, or just the argument end if it's unary
+      match: {
+        start: this.name.position,
+        end: isUnary
+          ? this.argument.boundaries.match.end
+          : this.argument.boundaries.match.end + 1,
+      },
+    };
   }
 
   compare(other: ASTNode): boolean {
-    return other instanceof FunctionNode && this.name.text === other.name.text
+    return other instanceof FunctionNode && this.name.text === other.name.text;
   }
 }
 
@@ -108,13 +170,16 @@ export class VariableNode implements ASTNode {
 
   get boundaries() {
     return {
-      similar: {start: this.variable.position, end: this.variable.position + 1},
-      match: {start: this.variable.position, end: this.variable.position + 1}
-    }
+      similar: {
+        start: this.variable.position,
+        end: this.variable.position + 1,
+      },
+      match: { start: this.variable.position, end: this.variable.position + 1 },
+    };
   }
 
   compare(other: ASTNode): boolean {
-    return  other instanceof VariableNode
+    return other instanceof VariableNode;
   }
 }
 
@@ -131,13 +196,13 @@ export class NumberNode implements ASTNode {
 
   get boundaries() {
     return {
-      similar: {start: this.value.position, end: this.value.position + 1},
-      match: {start: this.value.position, end: this.value.position + 1}
-    }
+      similar: { start: this.value.position, end: this.value.position + 1 },
+      match: { start: this.value.position, end: this.value.position + 1 },
+    };
   }
 
   compare(other: ASTNode): boolean {
-    return other instanceof NumberNode && this.value.text === other.value.text
+    return other instanceof NumberNode && this.value.text === other.value.text;
   }
 }
 
@@ -161,12 +226,12 @@ export class ConstNode implements ASTNode {
 
   get boundaries() {
     return {
-      similar: {start: this.value.position, end: this.value.position + 1},
-      match: {start: this.value.position, end: this.value.position + 1}
-    }
+      similar: { start: this.value.position, end: this.value.position + 1 },
+      match: { start: this.value.position, end: this.value.position + 1 },
+    };
   }
 
   compare(other: ASTNode): boolean {
-    return  other instanceof ConstNode && this.value.text === other.value.text
+    return other instanceof ConstNode && this.value.text === other.value.text;
   }
 }

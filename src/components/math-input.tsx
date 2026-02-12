@@ -1,18 +1,19 @@
 import type { LexerResult } from 'leac';
 import { useState } from 'react';
 import { cn } from '@/lib/utils.ts';
-import type { SimilarCompareResult } from '@/parser/ast.ts';
+import type { ASTBoundary } from '@/parser/ast.ts';
 import { lexer } from '@/parser/lexer.ts';
 
-export type PartialHint = SimilarCompareResult & { match: boolean };
+export type PartialHint = ASTBoundary & { match: boolean };
 export type Hints = PartialHint[] | 'full-match';
 
 type MathInputProps = {
   length: number;
   error: boolean;
   hints: Hints | null;
-  lexerResult: LexerResult | undefined;
+  lexerResult: LexerResult | undefined | null;
   onLexerResult: (result: LexerResult) => void;
+  disabled?: boolean;
 };
 
 export function MathInput({
@@ -21,10 +22,12 @@ export function MathInput({
   onLexerResult,
   error,
   hints,
+  disabled,
 }: MathInputProps) {
   const [expression, setExpression] = useState('');
 
   function handleExpressionChange(value: string) {
+    if (disabled) return;
     const lexerResult = lexer(value);
     onLexerResult(lexerResult);
 
@@ -61,7 +64,7 @@ export function MathInput({
   }
 
   function handleBackspace() {
-    if (!lexerResult) return;
+    if (disabled || !lexerResult) return;
     const tokens = [...lexerResult.tokens.slice(0, -1)];
     onLexerResult({
       ...lexerResult,
@@ -73,12 +76,17 @@ export function MathInput({
   return (
     <span className={'relative flex gap-3'}>
       <input
-        className={'opacity-0 absolute left-0 top-0 right-0 bottom-0 z-10'}
+        className={cn(
+          'opacity-0 absolute left-0 top-0 right-0 bottom-0 z-10',
+          disabled && 'pointer-events-none',
+        )}
         value={expression}
+        readOnly={disabled}
         onChange={(e) => {
           handleExpressionChange(e.target.value);
         }}
         onKeyDown={(e) => {
+          if (disabled) return;
           if (e.key === 'Backspace') {
             e.preventDefault();
             handleBackspace();
@@ -95,11 +103,13 @@ export function MathInput({
 
         return (
           <span
-            // biome-ignore lint/suspicious/noArrayIndexKey: The position is stable
+            // biome-ignore lint/suspicious/noArrayIndexKey: The position is stable as it corresponds to the fixed token index in the mathematical expression.
             key={i}
             className={cn(
-              'h-24 w-18 border-2 rounded-xl hover:ring-2 hover:ring-accent',
+              'h-24 w-18 border-2 rounded-xl transition-all flex-none',
               'flex items-center justify-center',
+              !disabled && 'hover:ring-2 hover:ring-accent',
+              disabled && 'opacity-40 bg-muted/20 border-muted',
               error && lexerResult?.tokens.length && 'border-red-500',
               relevantHints?.length && 'border-yellow-500',
               relevantHints?.some((hint) => hint.match) && 'border-green-500',

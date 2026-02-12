@@ -6,6 +6,7 @@ import {
   FunctionNode,
   NumberNode,
   type TokenWithPosition,
+  Unary,
   VariableNode,
 } from '@/parser/ast.ts';
 
@@ -75,8 +76,17 @@ export function mathnessParse(lexerResult: LexerResult): ParserResult {
     throw new Error(`Unexpected token: ${token.name}`);
   };
 
+  const parseUnary = (): ASTNode => {
+    const token = peek();
+    if (token?.name === 'minus' || token?.name === 'plus') {
+      const operator = consume();
+      return new Unary(operator, parseUnary());
+    }
+    return parsePrimary();
+  };
+
   const parseExponent = (): ASTNode => {
-    let node = parsePrimary();
+    let node = parseUnary();
     if (peek()?.name === 'caret') {
       const operator = consume();
       // Recurse on the right side for right-associativity (e.g. 2^3^4)
